@@ -1,30 +1,33 @@
 import React, { Component } from "react";
 import Chart from "./components/Chart";
+import moment from "moment";
 import "./App.css";
 import "../node_modules/react-vis/dist/style.css";
 
-const API_URL = "https://nataliia-radina.github.io/react-vis-example/";
-
-const MSEC_DAILY = 86400000;
-const timestamp = new Date("September 9 2017").getTime();
+const API_URL =
+  "https://www.quandl.com/api/v3/datasets/XSES/BEC.json?api_key=AsjQT56fzWTdZUBNDked&start_date=2018-03-01&order=asc";
 
 class App extends Component {
   constructor(props) {
     super(props);
-    this.state = { results: [], alertPrice: 1 };
+    this.state = { results: [], alertPrice: "1", user: 1 };
 
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
-  async sendMail() {
-    await fetch("/api/sendMail").then(response => {
-      if (response.ok) {
-        console.log("ok");
-      } else {
-        console.log("fail");
-      }
-    });
+  sendMail() {
+    try {
+      fetch("/api/sendMail").then(response => {
+        if (response.ok) {
+          console.log("ok");
+        } else {
+          console.log("fail");
+        }
+      });
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   handleChange(event) {
@@ -32,12 +35,30 @@ class App extends Component {
   }
 
   handleSubmit(event) {
-    alert("A Price target was submitted: " + this.state.alertPrice);
+    alert("A Price target was set: " + this.state.alertPrice);
     event.preventDefault();
-
-    fetch("/api/savePrice", {
-      
-    })
+    try {
+      fetch("/api/setPrice", {
+        method: "post",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price: this.state.alertPrice,
+          user: 1
+        })
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            console.log("Price not set");
+          }
+        })
+        .then(json => {
+          console.log("Price Set OK at " + json.price);
+        });
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   componentDidMount() {
@@ -51,33 +72,41 @@ class App extends Component {
       })
       .then(json => {
         this.setState({
-          results: json.results.filter(r => {
-            return r.name === "JavaScript";
+          results: json.dataset.data.map(e => {
+            return { x: moment(e[0], "YYYY-MM-DD").valueOf(), y: e[4] };
           })
         });
+      })
+      .catch(err => {
+        console.log(err);
       });
 
-    if (this.state.alertPrice === 1) this.sendMail();
+    fetch(`/api/getPrice/${this.state.user}`)
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error("Not able to get Price");
+        }
+      })
+      .then(json => {
+        if (json.price === this.state.alertPrice) {
+          console.log("json price" + json.price);
+          this.sendMail();
+        }
+      });
   }
 
   render() {
     const { results } = this.state;
 
-    const data = [
-      { x: timestamp + MSEC_DAILY, y: 8 },
-      { x: timestamp + MSEC_DAILY * 2, y: 5 },
-      { x: timestamp + MSEC_DAILY * 3, y: 4 },
-      { x: timestamp + MSEC_DAILY * 4, y: 9 },
-      { x: timestamp + MSEC_DAILY * 5, y: 1 }
-    ];
-
-    let todayPrice = data[data.length - 1].y;
+    //let todayPrice = data[data.length - 1].y;
 
     return (
       <div className="App">
         <div>
           {" "}
-          <Chart data={data} />{" "}
+          <Chart data={results} />{" "}
         </div>
         <div>
           <form onSubmit={this.handleSubmit}>
