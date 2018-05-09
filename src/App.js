@@ -10,17 +10,31 @@ const API_URL =
 class App extends Component {
   constructor(props) {
     super(props);
-    this.state = { results: [], alertPrice: "1", user: 1 };
+    this.state = { results: [], alertPrice: "1", user: 1, jsonPriceAlert: "" };
 
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   sendMail() {
+    const fromAddress = "prualert@company.com";
+    const subject = "Price Alert";
+    const text = `Hi! Price has reached.`;
+    const toAddress = "joozybrain@yahoo.com";
+
     try {
-      fetch("/api/sendMail").then(response => {
+      fetch("/api/sendMail", {
+        method: "post",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromAddress: fromAddress,
+          subject: subject,
+          text: text,
+          toAddress: toAddress
+        })
+      }).then(response => {
         if (response.ok) {
-          console.log("ok");
+          console.log("Mail Sent!");
         } else {
           console.log("fail");
         }
@@ -35,26 +49,26 @@ class App extends Component {
   }
 
   handleSubmit(event) {
-    alert("A Price target was set: " + this.state.alertPrice);
+    alert("A Price Alert was set: " + this.state.alertPrice);
     event.preventDefault();
     try {
-      fetch("/api/setPrice", {
+      fetch("/api/setPriceAlert", {
         method: "post",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           price: this.state.alertPrice,
-          user: 1
+          user: this.state.user
         })
       })
         .then(response => {
           if (response.ok) {
             return response.json();
           } else {
-            console.log("Price not set");
+            console.log("Price Alert not set");
           }
         })
         .then(json => {
-          console.log("Price Set OK at " + json.price);
+          console.log("Price Alert Set OK at " + json.price);
         });
     } catch (err) {
       console.log(err);
@@ -77,46 +91,59 @@ class App extends Component {
           })
         });
       })
+      .then(() => {
+        fetch(`/api/getPriceAlert/${this.state.user}`)
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            } else {
+              throw new Error("Not able to get Price");
+            }
+          })
+          .then(json => {
+            this.setState({ jsonPriceAlert: json.price });
+          })
+          .then(() => {
+            if (
+              this.state.jsonPriceAlert ===
+              {
+                ...this.state.results[this.state.results.length - 1]
+              }.y.toString()
+            ) {
+              this.sendMail();
+            }
+          });
+      })
       .catch(err => {
         console.log(err);
-      });
-
-    fetch(`/api/getPrice/${this.state.user}`)
-      .then(response => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw new Error("Not able to get Price");
-        }
-      })
-      .then(json => {
-        if (json.price === this.state.alertPrice) {
-          console.log("json price" + json.price);
-          this.sendMail();
-        }
       });
   }
 
   render() {
-    const { results } = this.state;
-
-    //let todayPrice = data[data.length - 1].y;
-
     return (
-      <div className="App">
-        <div>
-          {" "}
-          <Chart data={results} />{" "}
+      <React.Fragment>
+        <div className="App">
+          <div>
+            {" "}
+            <Chart data={this.state.results} />{" "}
+          </div>
+          <div>
+            <form onSubmit={this.handleSubmit}>
+              <label>
+                Set Alert <input type="text" onChange={this.handleChange} />
+              </label>
+              <input type="submit" />
+            </form>
+          </div>
         </div>
         <div>
-          <form onSubmit={this.handleSubmit}>
-            <label>
-              Set Alert <input type="text" onChange={this.handleChange} />
-            </label>
-            <input type="submit" />
-          </form>
+          Last loaded Price:{" "}
+          {{ ...this.state.results[this.state.results.length - 1] }.y}@{moment(
+            { ...this.state.results[this.state.results.length - 1] }.x
+          ).format("DD-MMM")}
         </div>
-      </div>
+        <div>Price Alert Set in DB: {this.state.jsonPriceAlert}</div>
+      </React.Fragment>
     );
   }
 }

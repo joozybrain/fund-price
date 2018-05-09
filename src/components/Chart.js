@@ -1,14 +1,6 @@
 import React from "react";
 import moment from "moment";
-import {
-  XYPlot,
-  XAxis,
-  YAxis,
-  VerticalGridLines,
-  HorizontalGridLines,
-  LineMarkSeries,
-  Crosshair
-} from "react-vis";
+import { XYPlot, XAxis, YAxis, LineMarkSeries, Crosshair } from "react-vis";
 
 class Chart extends React.Component {
   constructor(props) {
@@ -23,8 +15,8 @@ class Chart extends React.Component {
         width={1200}
         height={500}
       >
-        <VerticalGridLines />
-        <HorizontalGridLines />
+        {/* <VerticalGridLines />
+        <HorizontalGridLines /> */}
         <XAxis
           tickFormat={v => `${moment(v).format("MMM DD")}`}
           tickTotal={15}
